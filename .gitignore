@@ -1,0 +1,7 @@
+__pycache__/
+pynecone.db
+.web
+*.py[cod]
+.env
+env
+.DS_Store
