@@ -7,4 +7,4 @@ After cloning this repository, here are the steps to run this app on macOS. We w
 4. Run `pc init` to initialize the Pynecone app.
 5. Run `pc run` to run the app!
 
-You're all set up! After running `pc run`, the app should be live at `localhost:3000`.
+You're all set up! After running `make run`, the app should be live at `localhost:3000`.
