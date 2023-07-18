@@ -10,7 +10,6 @@ import simple.styles.global_styles as gs
 
 docs_url = "https://pynecone.io/docs/getting-started/introduction"
 filename = f"{config.app_name}/{config.app_name}.py"
-OPENAI_API_KEY = os.getenv("NEW_API_KEY")
 
 
 def chat_with_chatgpt(messages: list, model: str = "gpt-3.5-turbo"):
@@ -25,13 +24,13 @@ class State(pc.State):
     """The app state."""
     
     form_data: dict = {}
-    website_headline: List[str] = []
-    homepage_excerpt: List[str] = []
-    subtitle: List[str] = []
-    seo_headline: List[str] = []
-    seo_excerpt: List[str] = []
-    newsletter_intro: List[str] = []
-    twitter_share: List[str] = []
+    website_headline: str = ""
+    homepage_excerpt: str = ""
+    subtitle: str = ""
+    seo_headline: str = ""
+    seo_excerpt: str = ""
+    newsletter_intro: str = ""
+    twitter_share: str = ""
     
     csv_path: str = "./web/public/"
     examples: pd.DataFrame
@@ -53,18 +52,26 @@ class State(pc.State):
     def handle_submit(self, form_data: dict):
         """Handle the form submit."""
         self.form_data = form_data
+        # clear current data
+        self.website_headline = ""
+        self.homepage_excerpt = ""
+        self.subtitle = ""
+        self.seo_headline = ""
+        self.seo_excerpt = ""
+        self.newsletter_intro = ""
+        self.twitter_share = ""
+    
+        print('hello')
         self.website_headline = self.generate_website_headline()
         yield
         self.homepage_excerpt = self.generate_homepage_excerpt()
         yield
         self.subtitle = self.generate_subtitle()
         yield
-        time.sleep(65)
         self.seo_headline = self.generate_seo_headline()
         yield
         self.seo_excerpt = self.generate_seo_excerpt()
         yield
-        time.sleep(65)
         self.newsletter_intro = self.generate_newsletter_intro()
         yield
         self.twitter_share = self.generate_twitter_share()
@@ -75,105 +82,120 @@ class State(pc.State):
         
     def generate_website_headline(self):
         # make the messages such that it generates them as CSVs, not as readable lists and such. Consider using special character as delimiter.
-        system_msg = f"""
-            You will generate {self.form_data["headline_examples"]} headlines that summarize the content given and mimics the voice of the user using the same vernacular, formality, and tone.
-            Here are some headlines that you should mimic, separated by a \\n character: {self.form_data["liked_headlines"]}'
-            Your response should be in Python format. Here is the expected format: ["headline 1", "headline 2", "...", "headline {self.form_data['headline_examples']}"]
-            Limit your response to {self.form_data["headline_char_limit"]} characters.
-        """
         messages = [
-            {'role': 'system', 'content': system_msg},
+            {'role': 'system', 'content': f'You will generate {self.form_data["headline_examples"]} headlines that summarize the content given and mimics the voice of the user using the same vernacular, formality, and tone.'},
+            # {'role': 'system', 'content': f'Your response should be in JSON format. Here is the expected format: {{"headlines: ["headline 1", "headline 2", "...", "headline {self.form_data["headline_examples"]}"]}}'},
+            {'role': 'system', 'content': f'Limit your response to {self.form_data["headline_char_limit"]} characters.'},
             {'role': 'user', 'content': f'Please generate {self.form_data["headline_examples"]} headlines. BEGIN CONTENT {self.form_data["content"]} END CONTENT'}, 
         ]
+        
+        if self.form_data["liked_headlines"].strip() != "":
+            messages.insert(1, {'role': 'system', 'content': f'Here are some headlines that you should mimic, separated by a \\n character: {self.form_data["liked_headlines"]}'})
+            
         output = chat_with_chatgpt(messages)
-        parsed_output = eval(output)
-        return parsed_output
+        print(output, end='\n\n\n\n\n\n\n\n')
+        return output
+        # parsed_output = eval(output)['headlines']
+        # print(f"headlines: {parsed_output}", end='\n\n\n\n\n\n\n\n')
+        # return parsed_output
     
     def generate_homepage_excerpt(self):
         messages = [
-            {'role': 'system', 'content': f'You will generate {self.form_data["homepage_excerpt_examples"]} {self.form_data["homepage_excerpt_char_limit"]}-character homepage excerpts that describe the content given, while mimicking the voice of the content by the same vernacular, formality, and tone.'},
-            {'role': 'system', 'content': f'Your response should be in Python format. Here is the expected format: ["homepage_excerpt 1", "homepage_excerpt 2", "...", "homepage_excerpt {self.form_data["homepage_excerpt_examples"]}"]'},
-            {'role': 'system', 'content': f'Here are some homepage excerpts that you should mimic, separated by a \\n character: BEGIN EXAMPLES {self.form_data["liked_homepage_excerpts"]} END EXAMPLES'},
+            {'role': 'system', 'content': f'You will generate {self.form_data["homepage_excerpt_examples"]} homepage excerpts that describe the content given, while mimicking the voice of the content by the same vernacular, formality, and tone.'},
+            # {'role': 'system', 'content': f'Your response should be a JSON object. Here is the expected JSON format: {{"homepage_excerpts": ["homepage_excerpt 1", "homepage_excerpt 2", "...", "homepage_excerpt {self.form_data["homepage_excerpt_examples"]}"]}}'},
             {'role': 'user', 'content': f'Please generate {self.form_data["homepage_excerpt_examples"]}, {self.form_data["homepage_excerpt_char_limit"]}-character homepage excerpts. BEGIN CONTENT {self.form_data["content"]} END CONTENT'}, 
         ]
+        
+        if self.form_data["liked_homepage_excerpts"].strip() != "":
+            messages.insert(1, {'role': 'system', 'content': f'Here are some homepage excerpts that you should mimic, separated by a \\n character: BEGIN EXAMPLES {self.form_data["liked_homepage_excerpts"]} END EXAMPLES'},)
+            
         output = chat_with_chatgpt(messages)
-        parsed_output = eval(output)
-        return parsed_output
+        print(output, end='\n\n\n\n\n\n\n\n')
+        return output
+        # parsed_output = eval(output)['homepage_excerpts']
+        # print(f"homepage excerpts: {parsed_output}", end='\n\n\n\n\n\n\n\n')
+        # return parsed_output
         
     def generate_subtitle(self):
         messages = [
             {'role': 'system', 'content': f'You will generate {self.form_data["subtitle_examples"]} {self.form_data["subtitle_char_limit"]}-character subtitles that describe the content given, while mimicking the voice of the content by the same vernacular, formality, and tone.'},
-            {'role': 'system', 'content': f'Your response should be in Python format. Here is the expected format: ["subtitle 1", "subtitle 2", "...", "subtitle {self.form_data["subtitle_examples"]}"]'},
-            {'role': 'system', 'content': f'Here are some subtitles that you should mimic, separated by a \\n character: BEGIN SUBTITLE EXAMPLES {self.form_data["liked_subtitles"]} END SUBTITLE EXAMPLES'},
+            # {'role': 'system', 'content': f'Your response should be in JSON format. Here is the expected format: {{"subtitles": ["subtitle 1", "subtitle 2", "...", "subtitle {self.form_data["subtitle_examples"]}"]}}'},
             {'role': 'user', 'content': f'Please generate {self.form_data["subtitle_examples"]}, {self.form_data["subtitle_char_limit"]}-character subtitles. BEGIN CONTENT {self.form_data["content"]} END CONTENT'}, 
         ]
+        
+        if self.form_data["liked_subtitles"].strip() != "":
+            messages.insert(1, {'role': 'system', 'content': f'Here are some subtitles that you should mimic, separated by a \\n character: BEGIN SUBTITLE EXAMPLES {self.form_data["liked_subtitles"]} END SUBTITLE EXAMPLES'})
+            
         output = chat_with_chatgpt(messages)
-        parsed_output = eval(output)
-        return parsed_output
+        print(output, end='\n\n\n\n\n\n\n\n')
+        return output
+        # parsed_output = eval(output)["subtitles"]
+        # print(parsed_output, end='\n\n\n\n\n\n\n\n')
+        # return parsed_output
     
     def generate_seo_headline(self):
         messages = [
             {'role': 'system', 'content': f'You will generate {self.form_data["seo_headline_examples"]} {self.form_data["seo_headline_char_limit"]}-character SEO headlines that summarize the content given, while mimicking the voice of the content by the same vernacular, formality, and tone.'},
-            {'role': 'system', 'content': f'Your response should be in JSON format. Here is the expected JSON format: {{"seo_headlines": ["seo_headline 1", "seo_headline 2", "...", "seo_headline {self.form_data["seo_headline_examples"]}"]}}'},
+            # {'role': 'system', 'content': f'Your response should be in JSON format. Here is the expected JSON format: {{"seo_headlines": ["seo_headline 1", "seo_headline 2", "...", "seo_headline {self.form_data["seo_headline_examples"]}"]}}'},
             # {'role': 'system', 'content': f'Here are some SEO headlines that you should mimic, separated by a \\n character: BEGIN EXAMPLES {self.form_data["liked_seo_headlines"]} END EXAMPLES'},
             {'role': 'user', 'content': f'Please generate {self.form_data["seo_headline_examples"]}, {self.form_data["seo_headline_char_limit"]}-character SEO headline. BEGIN CONTENT {self.form_data["content"]} END CONTENT'}, 
         ]
-        print(f'here are the messages: {messages})')
+        
         output = chat_with_chatgpt(messages)
-        print(output)
-        print('\n\n\n\n\n\n\n\n\n\n\n\n')
-        parsed_output = json.loads(output)
-        print(parsed_output)
-        print('\n\n\n\n\n\n\n\n\n\n\n\n')
-        return parsed_output['seo_headlines']
+        print(output, end='\n\n\n\n\n\n\n\n')
+        return output
+        # parsed_output = json.loads(output)
+        # print(parsed_output)
+        # print('\n\n\n\n\n\n\n\n\n\n\n\n')
+        # return parsed_output['seo_headlines']
     
     def generate_seo_excerpt(self):
         messages = [
             {'role': 'system', 'content': f'You will generate {self.form_data["seo_excerpt_examples"]} {self.form_data["seo_excerpt_char_limit"]}-character SEO excerpts that describe the content given, while mimicking the voice of the content by the same vernacular, formality, and tone.'},
-            {'role': 'system', 'content': f'Your response should be in JSON format. Here is the expected JSON format: {{"seo_excerpts": ["seo_excerpt 1", "seo_excerpt 2", "...", "seo_excerpt {self.form_data["seo_excerpt_examples"]}"]}}'},
+            # {'role': 'system', 'content': f'Your response should be a JSON object. Here is the expected JSON format: {{"seo_excerpts": ["seo_excerpt 1", "seo_excerpt 2", "...", "seo_excerpt {self.form_data["seo_excerpt_examples"]}"]}}'},
             # {'role': 'system', 'content': f'Here are some SEO excerpts that you should mimic, separated by a \\n character: BEGIN EXAMPLES {self.form_data["liked_seo_excerpts"]} END EXAMPLES'},
             {'role': 'user', 'content': f'Please generate {self.form_data["seo_excerpt_examples"]}, {self.form_data["seo_excerpt_char_limit"]}-character SEO excerpt. BEGIN CONTENT {self.form_data["content"]} END CONTENT'}, 
         ]
-        print(f'here are the messages: {messages})')
+       
         output = chat_with_chatgpt(messages)
-        print(output)
-        print('\n\n\n\n\n\n\n\n\n\n\n\n')
-        parsed_output = json.loads(output)
-        print(parsed_output)
-        print('\n\n\n\n\n\n\n\n\n\n\n\n')
-        return parsed_output['seo_excerpts']
+        print(output, end='\n\n\n\n\n\n\n\n')
+        return output
+        # parsed_output = json.loads(output)
+        # print(parsed_output)
+        # print('\n\n\n\n\n\n\n\n\n\n\n\n')
+        # return parsed_output['seo_excerpts']
     
     def generate_newsletter_intro(self):
         messages = [
             {'role': 'system', 'content': f'You will generate {self.form_data["newsletter_intro_examples"]} {self.form_data["newsletter_intro_char_limit"]}-character newsletter intros that describe the content given, while mimicking the voice of the content by the same vernacular, formality, and tone.'},
-            {'role': 'system', 'content': f'Your response should be in JSON format. Here is the expected JSON format: {{"newsletter_intros": ["newsletter_intro 1", "newsletter_intro 2", "...", "newsletter_intro {self.form_data["newsletter_intro_examples"]}"]}}'},
+            # {'role': 'system', 'content': f'Your response should be in JSON format. Here is the expected JSON format: {{"newsletter_intros": ["newsletter_intro 1", "newsletter_intro 2", "...", "newsletter_intro {self.form_data["newsletter_intro_examples"]}"]}}'},
             # {'role': 'system', 'content': f'Here are some newsletter intros that you should mimic, separated by a \\n character: BEGIN EXAMPLES {self.form_data["liked_newsletter_intros"]} END EXAMPLES'},
             {'role': 'user', 'content': f'Please generate {self.form_data["newsletter_intro_examples"]}, {self.form_data["newsletter_intro_char_limit"]}-character newsletter intro. BEGIN CONTENT {self.form_data["content"]} END CONTENT'}, 
         ]
-        print(f'here are the messages: {messages})')
+        
         output = chat_with_chatgpt(messages)
-        print(output)
-        print('\n\n\n\n\n\n\n\n\n\n\n\n')
-        parsed_output = json.loads(output)
-        print(parsed_output)
-        print('\n\n\n\n\n\n\n\n\n\n\n\n')
-        return parsed_output['newsletter_intros']
+        print(output, end='\n\n\n\n\n\n\n\n')
+        return output
+        # parsed_output = json.loads(output)
+        # print(parsed_output)
+        # print('\n\n\n\n\n\n\n\n\n\n\n\n')
+        # return parsed_output['newsletter_intros']
     
     def generate_twitter_share(self):
         messages = [
             {'role': 'system', 'content': f'You will generate {self.form_data["twitter_share_examples"]} {self.form_data["twitter_share_char_limit"]}-character Twitter share messages that describe the content given, while mimicking the voice of the content by the same vernacular, formality, and tone.'},
-            {'role': 'system', 'content': f'Your response should be in JSON format. Here is the expected JSON format: {{"twitter_shares": ["twitter_share 1", "twitter_share 2", "...", "twitter_share {self.form_data["twitter_share_examples"]}"]}}'},
+            # {'role': 'system', 'content': f'Your response should be in JSON format. Here is the expected JSON format: {{"twitter_shares": ["twitter_share 1", "twitter_share 2", "...", "twitter_share {self.form_data["twitter_share_examples"]}"]}}'},
             # {'role': 'system', 'content': f'Here are some Twitter share messages that you should mimic, separated by a \\n character: BEGIN EXAMPLES {self.form_data["liked_twitter_shares"]} END EXAMPLES'},
             {'role': 'user', 'content': f'Please generate {self.form_data["twitter_share_examples"]}, {self.form_data["twitter_share_char_limit"]}-character Twitter share messages. BEGIN CONTENT {self.form_data["content"]} END CONTENT'}, 
         ]
-        print(f'here are the messages: {messages})')
+        
         output = chat_with_chatgpt(messages)
-        print(output)
-        print('\n\n\n\n\n\n\n\n\n\n\n\n')
-        parsed_output = json.loads(output)
-        print(parsed_output)
-        print('\n\n\n\n\n\n\n\n\n\n\n\n')
-        return parsed_output['twitter_shares']
+        print(output, end='\n\n\n\n\n\n\n\n')
+        return output
+        # parsed_output = json.loads(output)
+        # print(parsed_output)
+        # print('\n\n\n\n\n\n\n\n\n\n\n\n')
+        # return parsed_output['twitter_shares']
     
 def index() -> pc.Component:
     return pc.vstack(
@@ -264,62 +286,69 @@ def index() -> pc.Component:
         pc.divider(),
         pc.heading("Results"),
         pc.text("Headlines"),
-        pc.responsive_grid(
-            pc.foreach(State.website_headline, X_display),
-            columns=[1,2],
-            padding="15px"
-        ),
+        pc.text(State.website_headline),
+        # pc.responsive_grid(
+        #     pc.foreach(State.website_headline, X_display),
+        #     columns=[1,2],
+        #     padding="15px"
+        # ),
         pc.divider(),
         pc.text("Homepage Excerpts"),
-        pc.responsive_grid(
-            pc.foreach(State.homepage_excerpt, X_display),
-            columns=[1,2],
-            padding="15px"
-        ),
+        pc.text(State.homepage_excerpt),
+        # pc.responsive_grid(
+        #     pc.foreach(State.homepage_excerpt, X_display),
+        #     columns=[1,2],
+        #     padding="15px"
+        # ),
         pc.divider(),
         pc.text("Subtitles"),
-        pc.responsive_grid(
-            pc.foreach(State.subtitle, X_display),
-            columns=[1,2],
-            padding="15px"
-        ),
+        pc.text(State.subtitle),
+        # pc.responsive_grid(
+        #     pc.foreach(State.subtitle, X_display),
+        #     columns=[1,2],
+        #     padding="15px"
+        # ),
         pc.divider(),
         pc.text("SEO Headlines"),
-        pc.responsive_grid(
-            pc.foreach(State.seo_headline, X_display),
-            columns=[1,2],
-            padding="15px"
-        ),
+        pc.text(State.seo_headline),
+        # pc.responsive_grid(
+        #     pc.foreach(State.seo_headline, X_display),
+        #     columns=[1,2],
+        #     padding="15px"
+        # ),
         pc.divider(),
         pc.text("SEO Excerpts"),
-        pc.responsive_grid(
-            pc.foreach(State.seo_excerpt, X_display),
-            columns=[1,2],
-            padding="15px"
-        ),
+        pc.text(State.seo_excerpt),
+        # pc.responsive_grid(
+        #     pc.foreach(State.seo_excerpt, X_display),
+        #     columns=[1,2],
+        #     padding="15px"
+        # ),
         pc.divider(),
         pc.text("Newsletter Intros"),
-        pc.responsive_grid(
-            pc.foreach(State.newsletter_intro, X_display),
-            columns=[1,2],
-            padding="15px"
-        ),
+        pc.text(State.newsletter_intro),
+        # pc.responsive_grid(
+        #     pc.foreach(State.newsletter_intro, X_display),
+        #     columns=[1,2],
+        #     padding="15px"
+        # ),
         pc.text("Twitter Share Messages"),
-        pc.responsive_grid(
-            pc.foreach(State.twitter_share, X_display),
-            columns=[1,2],
-            padding="15px"
-        ),
+        pc.text(State.twitter_share),
+        # pc.responsive_grid(
+        #     pc.foreach(State.twitter_share, X_display),
+        #     columns=[1,2],
+        #     padding="15px"
+        # ),
         margin="0",
         padding="0px"
     )
     
-def X_display(X: str):
-    # print(headline)
-    return pc.text(
-        X,
-        padding="15px"
-    )
+# def X_display(X: str):
+#     # print(headline)
+#     return pc.text(
+#         X,
+#         padding="15px"
+#     )
 
 # Add state and page to the app.
 app = pc.App(state=State, style=gs.global_style)
